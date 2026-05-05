@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<title>Laptop Spec Sheet</title>
+<style>
+body { font-family: Arial, sans-serif; width:210mm; margin:auto; background-color:#fff; color:#000; }
+.container { border:2px solid #000; padding:20px 30px; box-sizing:border-box; }
+
+/* Flex header for model*/
+.header {
+    display: flex;
+    justify-content: space-between; /* model left, price right */
+    align-items: center;
+    margin-bottom: 25px;
+}
+.header .model {
+    font-size: 28px;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+/* Full-width divider with margins */
+.divider {
+    border-bottom: 2px solid #000;
+    margin: 15px 0 25px 0; /* spacing above/below */
+}
+
+/* Price styling */
+.price-section {
+    display: flex;
+    justify-content: flex-start; /* left-align price */
+    font-size: 32px;
+    font-weight: bold;
+    margin-top: 10px;
+}
+.price-label {
+    margin-left: 5px; /* space between label and value */
+}
+
+.price-value {
+    color: #1a73e8; /* highlight color */
+    margin-left: 180px;
+}
+
+/* Table styling */
+table { width:100%; border-collapse:collapse; font-size:18px; }
+td { padding:12px 10px; border-bottom:1px solid #ccc; }
+td:first-child { font-weight:bold; width:35%; }
+.highlight { font-size:22px; font-weight:bold; color:#1a73e8; }
+
+@media print { 
+    body { margin:0; } 
+    .container { border:none; padding:0; } 
+}
+</style>
+</head>
+<body>
+<div class='container'>
+
+<!-- Header with Model and Price and Divider -->
+<div class="header">
+    <div class="model">Model: __________________</div>
+</div>
+<div class="divider"></div>
+
+<table>
+<tr><td>Processor</td><td>Intel(R) Celeron(R) CPU G440 @ 1.60GHz</td></tr>
+<tr><td>Hukommelse</td><td>4 GB RAM</td></tr>
+<tr><td>Harddisk</td><td>480 GB</td></tr>
+<tr><td>Grafik</td><td>Intel(R) HD Graphics</td></tr>
+
+<tr><td>Styresystem</td><td>Microsoft Windows 10 Home</td></tr>
+
+</table>
+<div class="divider"></div>
+
+<div class="price-section">
+    <span class="price-label">Pris: <span class="price-value">825,-</span></span>
+</div>
+</div>
+</body>
+</html>
