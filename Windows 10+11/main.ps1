@@ -125,7 +125,16 @@ try{
     #########################################
 
     $batteryProgress = New-ProgressContext -ParentId 1 -Id 3
-    $batteryInfo = Get-Battery
+    $batteryInfo = Get-OverallBatteryStatus
+
+    if (-not $batteryInfo) {
+        $batteryInfo = [pscustomobject]@{
+            Exists = $false
+            Percent = $null
+            Batteries = @()
+        }
+    }
+    
     $batteryTest = Invoke-BatteryTest `
         -BatteryScriptPath (Join-Path $scriptroot\assets "battery_test.ps1") `
         -batteryInfo $batteryInfo `

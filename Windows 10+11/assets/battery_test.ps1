@@ -1,146 +1,111 @@
-# Battery Quick Test
 param(
     [int]$durationMinutes = 15,
     [scriptblock]$GetBatteryInfo
-) 
+)
+
 function Get-Battery {
     return & $GetBatteryInfo
 }
-Write-Host "Preparing laptop for battery test..." 
 
-# Store original brightness 
-try { 
-	$brightnessObj = Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness 
-	$originalBrightness = $brightnessObj.CurrentBrightness 
-} 
-	catch { 
-		Write-Host "Cannot read brightness, skipping restore later." 
-		$originalBrightness = $null 
-	} 
+function Get-BatteryPercent {
+    $b = Get-Battery
+    if (-not $b) { return $null }
 
-# Set power plan to Balanced 
-powercfg -setactive SCHEME_BALANCED 
+    # already pre-aggregated from main script
+    return $b.EstimatedChargeRemaining
+}
 
-# Set brightness to 50% for test 
-try { 
-	(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,50) 
-} 
-	catch { 
-		Write-Host "Cannot set brightness." 
-	} 
+Write-Host "Preparing laptop for battery test..."
 
-# Get starting battery level 
-$battery = Get-Battery
-$startPercent = $battery.EstimatedChargeRemaining 
-$startTime = Get-Date 
+# brightness
+try {
+    $brightnessObj = Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness
+    $originalBrightness = $brightnessObj.CurrentBrightness
+} catch {
+    $originalBrightness = $null
+}
 
-Write-Host "Starting battery: $startPercent%" 
-
-# -----------------------------
-# Adaptive Moderate CPU Load Job
-# -----------------------------
-$cpuInfo = Get-CimInstance Win32_Processor | Select-Object -First 1
-$cpuFreqMHz = $cpuInfo.MaxClockSpeed        # e.g., 2500 for 2.5 GHz
-$cpuCores = $cpuInfo.NumberOfLogicalProcessors
-
-# Determine loop size based on CPU frequency
-# Base: 35000 iterations for ~2.5 GHz (moderate load)
-$baseFreqMHz = 2500
-$baseIterations = 35000
-$scaledIterations = [math]::Max(10000, [math]::Round($baseIterations * ($cpuFreqMHz / $baseFreqMHz)))
-
-Write-Host "CPU: $($cpuInfo.Name)"
-Write-Host "Cores: $cpuCores, MaxFreq: $cpuFreqMHz MHz, Loop iterations: $scaledIterations"
+powercfg -setactive SCHEME_BALANCED
 
 try {
-    $loadJob = Start-Job {
+    (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods)
+        .WmiSetBrightness(1,50)
+} catch {}
+
+$battery = Get-Battery
+$startPercent = $battery.EstimatedChargeRemaining
+$startTime = Get-Date
+
+Write-Host "Starting battery: $startPercent%"
+
+$cpuInfo = Get-CimInstance Win32_Processor | Select-Object -First 1
+$iterations = [math]::Max(10000, [math]::Round(35000 * ($cpuInfo.MaxClockSpeed / 2500)))
+
+$loadJob = Start-Job {
     param($iterations)
 
     while ($true) {
-        # Moderate CPU computation, scaled to CPU
+        # CPU Load
         1..$iterations | ForEach-Object { [math]::Sqrt($_) * [math]::Pow($_,0.7) } | Out-Null
-
-        # Small disk activity
-        $tmp = "$env:TEMP\battery_test.tmp"
-        Get-Random -Minimum 1000 -Maximum 5000 | Out-File $tmp
-        Remove-Item $tmp -ErrorAction SilentlyContinue
-
-        # Occasional network activity
-        try {
-            Invoke-WebRequest -Uri "https://www.wikipedia.org" -UseBasicParsing -TimeoutSec 3 | Out-Null
+        # Small disk activity 
+        $tmp = "$env:TEMP\battery_test.tmp" 
+        Get-Random -Minimum 1000 -Maximum 5000 | Out-File $tmp 
+        Remove-Item $tmp -ErrorAction SilentlyContinue 
+        # Occasional network activity 
+        try { 
+            Invoke-WebRequest -Uri "https://www.wikipedia.org" -UseBasicParsing -TimeoutSec 3 | Out-Null 
         } catch {}
-
-        # Short idle like a user reading
         Start-Sleep -Milliseconds 500
     }
+} -ArgumentList $iterations
 
-    } -ArgumentList $scaledIterations
-
-    # Wait for test duration 
+try {
     $testExtended = $false
 
     do {
-
         Start-Sleep -Seconds ($durationMinutes * 60)
-        # Check battery after this cycle
+
         $battery = Get-Battery
-        $currentPercent = $battery.EstimatedChargeRemaining
-        $drop = $startPercent - $currentPercent
-	
+        $current = $battery.EstimatedChargeRemaining
+        $drop = $startPercent - $current
+
         if ($drop -lt 2 -and -not $testExtended) {
-            Write-Host "Battery drop too small ($drop%). Extending test another $durationMinutes minutes..."
+            Write-Host "Extending test..."
             $testExtended = $true
-        } else { break }
+        } else {
+            break
+        }
+
     } while ($true)
+
 }
 finally {
-    # Stop CPU load
-    if ($loadJob) {
-        Stop-Job $loadJob -Force -ErrorAction SilentlyContinue
-        Remove-Job $loadJob -Force -ErrorAction SilentlyContinue
-    }
+    Stop-Job $loadJob -Force -ErrorAction SilentlyContinue
+    Remove-Job $loadJob -Force -ErrorAction SilentlyContinue
 }
-# Get ending battery level 
+
 $battery = Get-Battery
-$endPercent = $battery.EstimatedChargeRemaining 
-$endTime = Get-Date 
+$endPercent = $battery.EstimatedChargeRemaining
+$endTime = Get-Date
 
-Write-Host "Ending battery: $endPercent%" 
-
-# Calculate battery usage
 $drop = $startPercent - $endPercent
-$elapsedMinutes = ($endTime - $startTime).TotalMinutes
+$elapsed = ($endTime - $startTime).TotalMinutes
 
-if ($drop -le 0) {
-    Write-Host "Battery did not drop enough to estimate runtime."
-    $runtimeMinutes = 0
-}
-else {
-
-    # percent used per minute
-    $drainRate = $drop / $elapsedMinutes
-
-    # estimated full runtime
-    $runtimeMinutes = [int](100 / $drainRate)
-
-    Write-Host "Battery drop: $drop %"
-    Write-Host "Drain rate: $([math]::Round($drainRate,3)) % per minute"
-    Write-Host "Estimated runtime: $runtimeMinutes minutes"
+if ($drop -gt 0) {
+    $rate = $drop / $elapsed
+    $runtime = [int](100 / $rate)
+} else {
+    $runtime = 0
 }
 
-# Prepare output for Spec-Sheet script
-$output = [int][math]::Floor($runtimeMinutes)
+$output = [int]$runtime
 
-# Restore brightness 
-if ($null -ne $originalBrightness) { 
-	try { 
-		(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,$originalBrightness) 
-		Write-Host "Brightness restored." 
-	} 
-		catch { 
-			Write-Host "Could not restore brightness." 
-		} 
-} 
+if ($originalBrightness) {
+    try {
+        (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods)
+            .WmiSetBrightness(1,$originalBrightness)
+    } catch {}
+}
 
 Write-Host $output
 return $output

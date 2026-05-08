@@ -2,11 +2,71 @@ function Get-BatteryInfo {
     Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue
 }
 
+function Get-Batteries {
+    # Always returns an array (safe for multi-battery systems)
+    $b = Get-BatteryInfo
+    if (-not $b) { return @() }
+    return @($b)
+}
+
+function Get-OverallBatteryStatus {
+
+    $batteries = Get-Batteries
+
+    if ($batteries.Count -eq 0) {
+        return [pscustomobject]@{
+            Exists = $false
+            Percent = $null
+            Batteries = @()
+        }
+    }
+
+    $valid = $batteries | Where-Object {
+        $null -ne $_.EstimatedChargeRemaining
+    }
+
+    if ($valid.Count -eq 0) {
+        return [pscustomobject]@{
+            Exists = $true
+            Percent = $null
+            Batteries = $batteries
+        }
+    }
+
+    $percent = ($valid |
+        Measure-Object EstimatedChargeRemaining -Average
+    ).Average
+
+    return [pscustomobject]@{
+        Exists = $true
+        Percent = [math]::Round($percent, 2)
+        Batteries = $batteries
+    }
+}
+
 function Test-IsCharging {
     param($batteryInfo)
-    $battery = $batteryInfo.Battery
-    if (-not $battery) { return $false }
-    return $battery.BatteryStatus -eq 2  # 2 = charging
+
+    if (-not $batteryInfo -or -not $batteryInfo.Battery) {
+        return $false
+    }
+
+    # Multiple batteries: if ANY is charging, treat as charging
+    foreach ($b in @($batteryInfo.Battery)) {
+        if ($b.BatteryStatus -eq 2) { return $true }
+    }
+
+    return $false
+}
+
+function Get-Battery {
+    $status = Get-OverallBatteryStatus
+
+    return [pscustomobject]@{
+        BatteryExists = $status.Exists
+        Battery = $status.Batteries
+        EstimatedChargeRemaining = $status.Percent
+    }
 }
 
 function Wait-ForUnplug {
@@ -27,13 +87,9 @@ function Show-BatteryProgress {
     while ((Get-Date) -lt $StartTime.AddSeconds($DurationSeconds)) {
 
         $elapsed = [int]((Get-Date) - $StartTime).TotalSeconds
-
-        if ($elapsed -gt $DurationSeconds) {
-            $elapsed = $DurationSeconds
-        }
+        if ($elapsed -gt $DurationSeconds) { $elapsed = $DurationSeconds }
 
         $remaining = $DurationSeconds - $elapsed
-
         $minutes = [int]($remaining / 60)
         $seconds = $remaining % 60
 
@@ -49,18 +105,6 @@ function Show-BatteryProgress {
     }
 
     $Progress.Complete.Invoke()
-}
-function Get-Battery{
-
-    $battery = Get-BatteryInfo
-    $batteryExists = $false
-
-    if ($null -ne $battery) { $batteryExists = $true }
-
-    return [PSCustomObject]@{
-        BatteryExists = $batteryExists
-        Battery = $battery
-    }
 }
 
 function Invoke-BatteryTest {
@@ -78,6 +122,7 @@ function Invoke-BatteryTest {
     Write-Host "Running battery test..."
 
     if ($batteryInfo.BatteryExists) {
+
         $charging = Test-IsCharging -batteryInfo $batteryInfo
 
         if ($charging) {
@@ -88,16 +133,15 @@ function Invoke-BatteryTest {
                 $choice = Read-Host "Do you want to skip the battery test? (Y/N)"
 
                 if ($choice -match "^[Yy]$") {
-                    Write-Host "Skipping battery test as requested."
                     return @{
-                        BatteryResult  = "Skipped"
+                        BatteryResult = "Skipped"
                         BatteryMinutes = 0
                     }
                 }
                 elseif ($choice -match "^[Nn]$") {
-                    Write-Host "Please unplug the charger to continue..."
+                    Write-Host "Please unplug the charger..."
                     Wait-ForUnplug
-                    Write-Host "Laptop is now on battery. Starting test..."
+                    Write-Host "Now running on battery."
                     break
                 }
 
@@ -105,50 +149,43 @@ function Invoke-BatteryTest {
         }
 
         $batteryFunction = ${function:Get-BatteryInfo}
-        # Run external battery script as a job
+
         $job = Start-Job -ScriptBlock {
             param($path, $duration, $batteryFunction)
-        
             & $path -durationMinutes $duration -GetBatteryInfo $batteryFunction
         } -ArgumentList $BatteryScriptPath, $DurationMinutes, $batteryFunction
 
         $cycle = 1
-    $durationSeconds = $DurationMinutes * 60
+        $durationSeconds = $DurationMinutes * 60
 
-    while ($job.State -in @('Running', 'NotStarted')) {
+        while ($job.State -in @('Running', 'NotStarted')) {
 
-        $cycleLabel = if ($cycle -eq 1) {
-            "Battery Test Running"
+            $label = if ($cycle -eq 1) {
+                "Battery Test Running"
+            } else {
+                "Extended Battery Test (Cycle $cycle)"
+            }
+
+            Show-BatteryProgress `
+                -StartTime (Get-Date) `
+                -DurationSeconds $durationSeconds `
+                -Progress $Progress `
+                -Label $label
+
+            $cycle++
+
+            if ($job.State -notin @('Running', 'NotStarted')) { break }
         }
-        else {
-            "Extended Battery Test (Cycle $cycle)"
-        }
-
-        $cycleStart = Get-Date
-
-        Show-BatteryProgress `
-            -StartTime $cycleStart `
-            -DurationSeconds $durationSeconds `
-            -Progress $Progress `
-            -Label $cycleLabel
-
-        $cycle++
-
-        if ($job.State -notin @('Running', 'NotStarted')) {
-            break
-        }
-    }
 
         Wait-Job $job
         $batteryMinutes = Receive-Job $job | Select-Object -Last 1
         Remove-Job $job
 
-        # This completes progress bar
         $Progress.Complete.Invoke()
+
     } else {
-        Write-Host "No battery detected. Skipping battery test."
         return @{
-            BatteryResult  = "No battery detected"
+            BatteryResult = "No battery detected"
             BatteryHours = 0
             BatteryMinutes = 0
         }
@@ -157,7 +194,7 @@ function Invoke-BatteryTest {
     $batteryHours = [int]($batteryMinutes / 60)
 
     return @{
-        BatteryResult  = "$batteryHours timer"
+        BatteryResult = "$batteryHours timer"
         BatteryHours = $batteryHours
         BatteryMinutes = $batteryMinutes
     }
