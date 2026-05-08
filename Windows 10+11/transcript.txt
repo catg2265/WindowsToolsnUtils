@@ -1,0 +1,71 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260507165419
+Username: LAPTOP-C84URUU1\Bruger
+RunAs User: LAPTOP-C84URUU1\Bruger
+Configuration Name: 
+Machine: LAPTOP-C84URUU1 (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File D:\Run After Updates\Windows 10+11\main.ps1
+Process ID: 13700
+PSVersion: 5.1.26100.8328
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8328
+BuildVersion: 10.0.26100.8328
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is D:\Run After Updates\Windows 10+11\transcript.txt
+True
+VERBOSE: Saving power settings to D:\Run After Updates\Windows 10+11\config\powerSettings.json
+VERBOSE: Disabling monitor timeout
+
+
+VERBOSE: Disabling sleep timeout
+
+
+VERBOSE: Disabling hibernate timeout
+
+
+Checking WinGet availability...
+WinGet already installed. Attempting repair...
+WARNING: Repair failed. Checking if WinGet is still usable...
+WinGet is functional. Skipping reinstall.
+Chocolatey already installed.
+
+Installing OpenJDK 17...
+Trying winget install: AdoptOpenJDK.OpenJDK.17
+Install failed, trying upgrade...
+OpenJDK 17 installed via winget.
+
+Installing .NET Runtime 7...
+Trying winget install: Microsoft.DotNet.Runtime.7
+Install failed, trying upgrade...
+.NET Runtime 7 installed via winget.
+
+Installing Visual C++ Redistributable 2015-2022 x64...
+Trying winget install: Microsoft.VCRedist.2015+.x64
+Install failed, trying upgrade...
+Visual C++ Redistributable 2015-2022 x64 installed via winget.
+
+Installing Google Chrome...
+Trying winget install: Google.Chrome
+Install failed, trying upgrade...
+Google Chrome installed via winget.
+
+Installing VLC Media Player...
+Trying winget install: VideoLAN.VLC
+Install failed, trying upgrade...
+VLC Media Player installed via winget.
+
+Installing LibreOffice...
+Trying winget install: TheDocumentFoundation.LibreOffice
+Install failed, trying upgrade...
+LibreOffice installed via winget.
+PS>TerminatingError(): "The pipeline has been stopped."
+>> TerminatingError(): "The pipeline has been stopped."
+**********************
+Windows PowerShell transcript end
+End time: 20260507165555
+**********************
