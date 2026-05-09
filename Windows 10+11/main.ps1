@@ -99,7 +99,7 @@ try{
     Save-PowerSettings -Verbose
     Set-NoTimeouts -Verbose
 
-    Add-Process "Install Packages"
+    Add-Process "Installing Packages"
     Add-Process "Battery Test"
     Add-Process "Gather System Info"
     Add-Process "Generate Reports"
@@ -126,14 +126,6 @@ try{
 
     $batteryProgress = New-ProgressContext -ParentId 1 -Id 3
     $batteryInfo = Get-OverallBatteryStatus
-
-    if (-not $batteryInfo) {
-        $batteryInfo = [pscustomobject]@{
-            Exists = $false
-            Percent = $null
-            Batteries = @()
-        }
-    }
     
     $batteryTest = Invoke-BatteryTest `
         -BatteryScriptPath (Join-Path $scriptroot\assets "battery_test.ps1") `
@@ -172,7 +164,7 @@ try{
         -gpuName $systemInfo.GPU `
         -screenSize $systemInfo.ScreenSize `
         -os $systemInfo.OS `
-        -batteryExists $batteryInfo.BatteryExists `
+        -batteryExists $batteryInfo.Exists `
         -batteryResult $batteryTest.BatteryResult `
         -estimatedPrice $estimatedPrice
     Write-Host "Created: $specFile in $resultFolder"

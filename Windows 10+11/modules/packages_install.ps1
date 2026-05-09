@@ -210,7 +210,7 @@ function Install-Packages{
             $percent
         ) 
 
-        Write-Host "`nInstalling $($pkg.name)..."
+        #Write-Host "`nInstalling $($pkg.name)..."
 
         $wingetReturnCode = Install-WithWinget -id $pkg.winget
         Write-Debug "`nwinget install of $($pkg.name) gave exit code: $($wingetReturnCode)"
@@ -228,6 +228,12 @@ function Install-Packages{
         }
     }
     # Finish progress bar
+    $Progress.Update.Invoke(
+            "Installing packages",
+            "Complete",
+            100 # 100%
+        ) 
+    Start-Sleep -Milliseconds 100
     $Progress.Complete.Invoke()
 }
 function Set-DefaultApps {
@@ -244,5 +250,3 @@ function Set-DefaultApps {
 
     Write-Host "***FOR FUTURE USERS ONLY*** Default apps import completed. ***FOR FUTURE USERS ONLY***"
 }
-
-

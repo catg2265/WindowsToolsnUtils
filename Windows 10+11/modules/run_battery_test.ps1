@@ -47,33 +47,23 @@ function Get-OverallBatteryStatus {
 function Test-IsCharging {
     param($batteryInfo)
 
-    if (-not $batteryInfo -or -not $batteryInfo.Battery) {
+    if (-not $batteryInfo -or -not $batteryInfo.Batteries) {
         return $false
     }
 
     # Multiple batteries: if ANY is charging, treat as charging
-    foreach ($b in @($batteryInfo.Battery)) {
+    foreach ($b in @($batteryInfo.Batteries)) {
         if ($b.BatteryStatus -eq 2) { return $true }
     }
 
     return $false
 }
 
-function Get-Battery {
-    $status = Get-OverallBatteryStatus
-
-    return [pscustomobject]@{
-        BatteryExists = $status.Exists
-        Battery = $status.Batteries
-        EstimatedChargeRemaining = $status.Percent
-    }
-}
-
 function Wait-ForUnplug {
     do {
         Start-Sleep -Seconds 2
-        $batteryInfo = Get-Battery
-    } while (Test-IsCharging $batteryInfo)
+        $batteryInfo = Get-OverallBatteryStatus
+    } while (Test-IsCharging -batteryInfo $batteryInfo)
 }
 
 function Show-BatteryProgress {
@@ -84,23 +74,22 @@ function Show-BatteryProgress {
         [string]$Label = "Battery Test Running"
     )
 
-    while ((Get-Date) -lt $StartTime.AddSeconds($DurationSeconds)) {
+    $endTime = (Get-Date).AddSeconds($DurationSeconds)
+    while ($true) {
 
-        $elapsed = [int]((Get-Date) - $StartTime).TotalSeconds
-        if ($elapsed -gt $DurationSeconds) { $elapsed = $DurationSeconds }
-
-        $remaining = $DurationSeconds - $elapsed
+        $remaining = ($endTime - (Get-Date)).TotalSeconds
+        if ($remaining -le 0) { break }
+    
+        $remaining = [math]::Ceiling($remaining)
+    
         $minutes = [int]($remaining / 60)
         $seconds = $remaining % 60
-
-        $percent = [int](($elapsed / $DurationSeconds) * 100)
-
+    
         $Progress.Update.Invoke(
             $Label,
             "Time remaining: ${minutes}m ${seconds}s",
-            $percent
+            [int](100 - (($remaining / $DurationSeconds) * 100))
         )
-
         Start-Sleep 1
     }
 
@@ -121,7 +110,7 @@ function Invoke-BatteryTest {
 
     Write-Host "Running battery test..."
 
-    if ($batteryInfo.BatteryExists) {
+    if ($batteryInfo.Exists) {
 
         $charging = Test-IsCharging -batteryInfo $batteryInfo
 
@@ -148,7 +137,7 @@ function Invoke-BatteryTest {
             } while ($true)
         }
 
-        $batteryFunction = ${function:Get-BatteryInfo}
+        $batteryFunction = ${function:Get-OverallBatteryStatus}.ScriptBlock
 
         $job = Start-Job -ScriptBlock {
             param($path, $duration, $batteryFunction)
@@ -167,7 +156,6 @@ function Invoke-BatteryTest {
             }
 
             Show-BatteryProgress `
-                -StartTime (Get-Date) `
                 -DurationSeconds $durationSeconds `
                 -Progress $Progress `
                 -Label $label

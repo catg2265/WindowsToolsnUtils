@@ -12,7 +12,7 @@ function Get-BatteryPercent {
     if (-not $b) { return $null }
 
     # already pre-aggregated from main script
-    return $b.EstimatedChargeRemaining
+    return $b.Percent
 }
 
 Write-Host "Preparing laptop for battery test..."
@@ -33,7 +33,7 @@ try {
 } catch {}
 
 $battery = Get-Battery
-$startPercent = $battery.EstimatedChargeRemaining
+$startPercent = $battery.Percent
 $startTime = Get-Date
 
 Write-Host "Starting battery: $startPercent%"
@@ -41,23 +41,61 @@ Write-Host "Starting battery: $startPercent%"
 $cpuInfo = Get-CimInstance Win32_Processor | Select-Object -First 1
 $iterations = [math]::Max(10000, [math]::Round(35000 * ($cpuInfo.MaxClockSpeed / 2500)))
 
-$loadJob = Start-Job {
-    param($iterations)
+$workerCount = [math]::Max(2, [math]::Min(3, [Environment]::ProcessorCount))
 
-    while ($true) {
-        # CPU Load
-        1..$iterations | ForEach-Object { [math]::Sqrt($_) * [math]::Pow($_,0.7) } | Out-Null
-        # Small disk activity 
-        $tmp = "$env:TEMP\battery_test.tmp" 
-        Get-Random -Minimum 1000 -Maximum 5000 | Out-File $tmp 
-        Remove-Item $tmp -ErrorAction SilentlyContinue 
-        # Occasional network activity 
-        try { 
-            Invoke-WebRequest -Uri "https://www.wikipedia.org" -UseBasicParsing -TimeoutSec 3 | Out-Null 
-        } catch {}
-        Start-Sleep -Milliseconds 500
+$jobs = 1..$workerCount | ForEach-Object {
+
+    Start-Job -ArgumentList $iterations -ScriptBlock {
+
+        param($iterations)
+
+        while ($true) {
+
+            # --- dynamic workload scaling (realism) ---
+            $localIterations = [math]::Round(
+                $iterations * (Get-Random -Minimum 0.7 -Maximum 1.1)
+            )
+
+            # --- CPU burst phase (bursty, not constant) ---
+            if ((Get-Random -Minimum 1 -Maximum 10) -le 6) {
+
+                for ($i = 1; $i -le $localIterations; $i++) {
+
+                    # lightweight mixed compute (closer to real app work than pure math loops)
+                    $x = $i + 1
+                    $val = [math]::Sqrt($x) * [math]::Log($x + 1)
+
+                    # occasionally mix branch behavior (simulates app logic)
+                    if (($i % 100) -eq 0) {
+                        $val = $val * 0.99
+                    }
+                }
+            }
+
+            # --- light disk activity (occasional, not constant) ---
+            if ((Get-Random -Minimum 1 -Maximum 10) -eq 1) {
+                try {
+                    $tmp = "$env:TEMP\battery_sim.tmp"
+                    Set-Content -Path $tmp -Value (Get-Random)
+                    Remove-Item $tmp -ErrorAction SilentlyContinue
+                } catch {}
+            }
+
+            # --- rare network activity (very occasional like real apps) ---
+            if ((Get-Random -Minimum 1 -Maximum 30) -eq 1) {
+                try {
+                    Invoke-WebRequest `
+                        -Uri "https://www.wikipedia.org" `
+                        -UseBasicParsing `
+                        -TimeoutSec 3 | Out-Null
+                } catch {}
+            }
+
+            # --- irregular idle time (important for realism) ---
+            Start-Sleep -Milliseconds (Get-Random -Minimum 80 -Maximum 400)
+        }
     }
-} -ArgumentList $iterations
+}
 
 try {
     $testExtended = $false
@@ -66,8 +104,8 @@ try {
         Start-Sleep -Seconds ($durationMinutes * 60)
 
         $battery = Get-Battery
-        $current = $battery.EstimatedChargeRemaining
-        $drop = $startPercent - $current
+        $currentPercent = $battery.Percent
+        $drop = $startPercent - $currentPercent
 
         if ($drop -lt 2 -and -not $testExtended) {
             Write-Host "Extending test..."
@@ -80,12 +118,13 @@ try {
 
 }
 finally {
-    Stop-Job $loadJob -Force -ErrorAction SilentlyContinue
-    Remove-Job $loadJob -Force -ErrorAction SilentlyContinue
+    $jobs | Stop-Job
+    Start-Sleep -Seconds 1
+    $jobs | Remove-Job
 }
 
 $battery = Get-Battery
-$endPercent = $battery.EstimatedChargeRemaining
+$endPercent = $battery.Percent
 $endTime = Get-Date
 
 $drop = $startPercent - $endPercent

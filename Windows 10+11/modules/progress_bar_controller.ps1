@@ -95,19 +95,30 @@ function New-ProgressContext {
         [int]$Id = 2
     )
 
-    return [PSCustomObject]@{
-        Update = {
-            param($activity, $status, $percent)
+    $capturedId = $Id
+    $capturedParentId = $ParentId
 
-            Write-Progress -Id $Id `
-                -ParentId $ParentId `
-                -Activity $activity `
-                -Status $status `
-                -PercentComplete $percent
-        }.GetNewClosure()
+    $update = {
+        param($activity, $status, $percent)
 
-        Complete = {
-            Write-Progress -Id $Id -Completed
-        }.GetNewClosure()
+        Write-Progress `
+            -Id $capturedId `
+            -ParentId $capturedParentId `
+            -Activity $activity `
+            -Status $status `
+            -PercentComplete $percent
+    }.GetNewClosure()
+
+    $complete = {
+        Write-Progress `
+            -Id $capturedId `
+            -ParentId $capturedParentId `
+            -Activity "Completed" `
+            -Completed
+    }.GetNewClosure()
+
+    [PSCustomObject]@{
+        Update   = $update
+        Complete = $complete
     }
 }
