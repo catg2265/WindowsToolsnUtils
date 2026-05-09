@@ -137,12 +137,12 @@ function Invoke-BatteryTest {
             } while ($true)
         }
 
-        $batteryFunction = ${function:Get-OverallBatteryStatus}.ScriptBlock
+        $batteryFunctionString = ${function:Get-OverallBatteryStatus}.ToString()
 
         $job = Start-Job -ScriptBlock {
-            param($path, $duration, $batteryFunction)
-            & $path -durationMinutes $duration -GetBatteryInfo $batteryFunction
-        } -ArgumentList $BatteryScriptPath, $DurationMinutes, $batteryFunction
+            param($path, $duration, $batteryFunctionString)
+            & $path -durationMinutes $duration -GetBatteryInfo $batteryFunctionString
+        } -ArgumentList $BatteryScriptPath, $DurationMinutes, $batteryFunctionString
 
         $cycle = 1
         $durationSeconds = $DurationMinutes * 60

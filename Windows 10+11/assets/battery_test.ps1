@@ -1,9 +1,13 @@
 param(
     [int]$durationMinutes = 15,
-    [scriptblock]$GetBatteryInfo
+    [string]$GetBatteryInfoFunction
 )
 
 function Get-Battery {
+    if ($null -eq $GetBatteryInfoFunction) {
+        throw "GetBatteryInfo scriptblock was not provided."
+    }
+    $GetBatteryInfo = [scriptblock]::Create($GetBatteryInfoFunction)
     return & $GetBatteryInfo
 }
 
