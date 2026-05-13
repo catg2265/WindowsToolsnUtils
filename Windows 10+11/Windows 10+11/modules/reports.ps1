@@ -60,8 +60,10 @@ function New-SpecSheetFile {
     $specSheetPath = Join-Path $DestinationFolder "spec_sheet.html"
 
     if ($batteryExists) {
-        $batteryRow = "<tr><td>Batteritid op til</td><td class='highlight'>$batteryResult</td></tr>"
         $displayRow = "<tr><td>Sk<span>&#230;</span>rm</td><td>$screenSize</td></tr>"
+        if ($batteryResult -ne "Skipped"){
+            $batteryRow = "<tr><td>Batteritid op til</td><td class='highlight'>$batteryResult</td></tr>"
+        }
     }
     else {
         $batteryRow = ""

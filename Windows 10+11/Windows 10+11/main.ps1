@@ -14,6 +14,12 @@ if (Test-Path $LogPath) {
     $newName = "transcript_$timestamp.txt"
 
     Move-Item $LogPath (Join-Path $LogArchivePath $newName) -Force
+
+    # Keep only the 10 newest transcript files
+    Get-ChildItem -Path $LogArchivePath -Filter "transcript_*.txt" |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip 10 |
+        Remove-Item -Force
 }
 
 Start-Transcript -Path $LogPath -Append -ErrorAction SilentlyContinue
@@ -70,6 +76,7 @@ try{
         "progress_bar_controller.ps1",
         "power_settings.ps1",
         "packages_install.ps1",
+        "battery_core.ps1"
         "run_battery_test.ps1",
         "system_info.ps1",
         "reports.ps1"
@@ -93,7 +100,6 @@ try{
     #########         Setup         #########
     #########################################
 
-    #$VerbosePreference = "Continue"
     $ErrorActionPreference = "Stop"
 
     Save-PowerSettings -Verbose
@@ -126,10 +132,10 @@ try{
 
     $batteryProgress = New-ProgressContext -ParentId 1 -Id 3
     $batteryInfo = Get-OverallBatteryStatus
-    
     $batteryTest = Invoke-BatteryTest `
-        -BatteryScriptPath (Join-Path $scriptroot\assets "battery_test.ps1") `
-        -batteryInfo $batteryInfo `
+        -DurationMinutes 15 `
+        -BatteryScriptPath (Join-Path $scriptroot "assets\battery_test.ps1") `
+        -MainScriptPath $scriptroot `
         -Progress $batteryProgress
 
     Move-Process
@@ -193,6 +199,7 @@ try{
 
     Read-Host "Press any key to exit..." -ForegroundColor Yellow
 } catch {
+    Stop-Transcript -ErrorAction SilentlyContinue
     $_ | Out-String | Out-File $LogPath -Append
     throw
 }

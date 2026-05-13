@@ -8,8 +8,7 @@ function Get-Disks {
     $diskObjects = @()
 
     $validSizes = @(
-        64, 120, 128, 248, 256, 320, 480,
-        500, 512, 960, 1000, 1024, 2000,
+        64, 128, 256, 320, 512, 1000, 2000,
         3000, 4000, 6000, 8000, 10000,
         12000, 16000, 20000, 22000
     )
@@ -150,7 +149,6 @@ function Get-EstimatedPrice {
         $screenSize,
         $batteryHours
     )
-
     $price = 0
 
     # ----- CPU tier contribution (DKK) -----
@@ -193,8 +191,8 @@ function Get-EstimatedPrice {
     }
 
     # ----- Battery quality adjustment -----
-    if ($batteryHours -ge 8) { $price += 600 }    
-    elseif ($batteryHours -ge 5) { $price += 300 } 
+    if ($batteryHours -ge 8) { $price += 400 }    
+    elseif ($batteryHours -ge 5) { $price += 100 } 
     elseif ($batteryHours -le 2) { $price -= 300 } 
 
     # Minimum safeguard

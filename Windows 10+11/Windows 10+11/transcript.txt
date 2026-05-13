@@ -1,12 +1,12 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260508160459
+Start time: 20260512142513
 Username: LAPTOP-C84URUU1\Bruger
 RunAs User: LAPTOP-C84URUU1\Bruger
 Configuration Name: 
 Machine: LAPTOP-C84URUU1 (Microsoft Windows NT 10.0.26200.0)
 Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File D:\Run After Updates\Windows 10+11\main.ps1
-Process ID: 14800
+Process ID: 8976
 PSVersion: 5.1.26100.8328
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8328
@@ -52,16 +52,19 @@ Install failed, trying upgrade...
 LibreOffice installed via winget.
 Applying default app associations...
 ***FOR FUTURE USERS ONLY*** Default apps import completed. ***FOR FUTURE USERS ONLY***
-Running battery test...
 
-Laptop is currently plugged into power.
-Please unplug the charger...
-Now running on battery.
-INFO: Preparing laptop for battery test...
->> TerminatingError(): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: The expression after '&' in a pipeline element produced an object that was not valid. It must result in a command name, a script block, or a CommandInfo object."
->> TerminatingError(): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: The expression after '&' in a pipeline element produced an object that was not valid. It must result in a command name, a script block, or a CommandInfo object."
->> TerminatingError(Out-File): "Processen kan ikke få adgang til filen 'D:\Run After Updates\Windows 10+11\transcript.txt', fordi den bliver brugt af en anden proces."
+Laptop is plugged into power.
+Created: D:\Run After Updates\Windows 10+11\Results\HP Laptop 14-ck2xxx-1\spec_sheet.html in D:\Run After Updates\Windows 10+11\Results\HP Laptop 14-ck2xxx-1
+Created: D:\Run After Updates\Windows 10+11\Results\HP Laptop 14-ck2xxx-1\internal_report.txt in D:\Run After Updates\Windows 10+11\Results\HP Laptop 14-ck2xxx-1
+Restoring power settings from D:\Run After Updates\Windows 10+11\config\powerSettings.json
+
+
+
+
+
+
+
 **********************
 Windows PowerShell transcript end
-End time: 20260508163721
+End time: 20260512142559
 **********************
